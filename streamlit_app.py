@@ -1,63 +1,31 @@
 import streamlit as st
 import requests
+from bs4 import BeautifulSoup
 
-# Check if the openai package is installed
-try:
-    import openai
-except ImportError:
-    st.error("openai 패키지가 설치되어 있지 않습니다. 설치 후 다시 시도하세요.")
+def extract_text_from_html(url):
+    response = requests.get(url)
+    soup = BeautifulSoup(response.content, 'html.parser')
+    return soup.get_text()
 
-def generate_response(prompt, model, api_key):
-    if model == "OpenAI":
-        openai.api_key = api_key
-        response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}]
-        )
-        return response['choices'][0]['message']['content']
-    elif model == "Claude":
-        headers = {
-            'Authorization': f'Bearer {api_key}',
-            'Content-Type': 'application/json'
-        }
-        data = {
-            'prompt': prompt,
-            'model': 'claude-v1',
-            'max_tokens': 150
-        }
-        response = requests.post('https://api.anthropic.com/v1/complete', headers=headers, json=data)
-        return response.json()['completion']
+st.title("HTML to Markdown/Text Converter")
 
-def code_interpreter(code):
-    try:
-        exec_globals = {}
-        exec(code, exec_globals)
-        return exec_globals
-    except Exception as e:
-        return str(e)
+url = st.text_input("Enter the URL of the website:")
+file_type = st.radio("Select file type to download:", (".md", ".txt"))
 
-st.title("AI 챗봇 및 코드 인터프리터")
-
-# User input for API keys
-openai_api_key = st.text_input("OpenAI API 키를 입력하세요:", type="password")
-claude_api_key = st.text_input("Claude API 키를 입력하세요:", type="password")
-
-# Select AI model
-model_option = st.selectbox("AI 모델 선택:", ["OpenAI", "Claude"])
-
-# User input for chatbot
-user_input = st.text_input("당신: ", "")
-
-if user_input and model_option and (model_option == "OpenAI" and openai_api_key or model_option == "Claude" and claude_api_key):
-    response = generate_response(user_input, model_option, openai_api_key if model_option == "OpenAI" else claude_api_key)
-    st.text_area("챗봇:", value=response, height=200)
-
-# User input for code execution
-code_input = st.text_area("실행할 Python 코드를 입력하세요:", height=150)
-
-if st.button("코드 실행"):
-    if code_input:
-        output = code_interpreter(code_input)
-        st.text_area("코드 출력:", value=str(output), height=200)
+if st.button("Extract Text"):
+    if url:
+        try:
+            extracted_text = extract_text_from_html(url)
+            if file_type == ".md":
+                filename = "extracted_text.md"
+                content = f"# Extracted Text\n\n{extracted_text}"
+            else:
+                filename = "extracted_text.txt"
+                content = extracted_text
+            
+            st.download_button(label="Download File", data=content, file_name=filename, mime="text/plain")
+            st.success(f"Text extracted and ready for download as {filename}")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
     else:
-        st.warning("실행할 코드를 입력해 주세요.")
+        st.error("Please enter a valid URL.")
