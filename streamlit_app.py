@@ -1,6 +1,11 @@
 import streamlit as st
-import openai
 import requests
+
+# Check if the openai package is installed
+try:
+    import openai
+except ImportError:
+    st.error("openai 패키지가 설치되어 있지 않습니다. 설치 후 다시 시도하세요.")
 
 def generate_response(prompt, model, api_key):
     if model == "OpenAI":
